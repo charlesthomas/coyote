@@ -3,10 +3,14 @@ pythondev = /usr/include/python2.7/Python.h
 ffi = /usr/include/x86_64-linux-gnu/ffi.h
 rabbit = /usr/sbin/rabbitmq-server
 
+.PHONY: rabbitmq reqs
+
 all: reqs $(rabbit)
 
+rabbitmq: $(rabbit)
+
 reqs: $(pip) $(pythondev) $(ffi)
-	pip install -r /coyote/dev/requirements.txt
+	pip install -r requirements.txt
 
 $(pip):
 	apt-get install -y python-pip
