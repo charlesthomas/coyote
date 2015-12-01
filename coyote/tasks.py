@@ -1,22 +1,17 @@
 #!/usr/bin/env python
 from __future__ import absolute_import
 
-from bcrypt import hashpw
-from celery import Celery
+from subprocess import Popen
+from time import sleep
 
-app = Celery('tasks')
-
-key = '''
-THIS IS MY TERRIBLE BUT SUPER SECRET KEY FOR BCRYPT
-'''
+from coyote.celery import app
 
 @app.task
-def read_cmd(cmd, timestamp, sig):
-    if not _validate_sig(cmd, timestamp, sig):
-        print "uh oh"
-        return
-    print "{timestamp}: {cmd}".format(timestamp=timestamp, cmd=cmd)
+def cprint(string):
+    print string
 
-
-def _validate_sig(cmd, timestamp, sig):
-    return sig == hashpw(cmd + timestamp + key, sig)
+@app.task
+def down_iface(iface, timeout=10):
+    Popen(['sudo', 'ifdown', iface])
+    sleep(timeout)
+    Popen(['sudo', 'ifup', iface])
