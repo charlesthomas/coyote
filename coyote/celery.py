@@ -3,10 +3,36 @@ from __future__ import absolute_import
 
 import os
 import sys
+from datetime import timedelta
 
 from celery import Celery
+from celery.schedules import schedule
 
-LIB_DIRS = ['./coyote', './lib', '/var/lib/coyote']
+
+class OddsChecker(object):
+    def __init__(self, odds):
+        self.odds = odds
+
+
+    def should_i_run(self):
+        return True
+
+
+class Scheduler(schedule):
+    def __init__(self, run_every, odds, *args):
+        self.odds = OddsChecker(odds)
+        super(Scheduler, self).__init__(run_every, *args)
+
+
+    def is_due(self, last_run_at):
+        due, next_time_to_check = super(Scheduler, self).is_due(last_run_at)
+        if due and self.odds.should_i_run():
+            return (True, next_time_to_check)
+        return (False, next_time_to_check)
+
+# LIB_DIRS = ['./coyote', './lib', '/var/lib/coyote']
+LIB_DIRS = ['./coyote', ]#'./lib', '/var/lib/coyote']
+
 
 def build_includes():
     includes = list()
@@ -25,6 +51,16 @@ def build_includes():
     return includes
 
 app = Celery('tasks', include=build_includes())
+
+schedule = {
+    'test': {
+        'task':'tasks.cstring',
+        'schedule': Scheduler(timedelta(seconds=1), odds='100%'),
+        'args': ('this is a test',),
+    },
+}
+
+app.conf.update(CELERYBEAT_SCHEDULE=schedule)
 
 if __name__ == '__main__':
     app.start()

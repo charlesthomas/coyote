@@ -1,4 +1,5 @@
 .vagrant
+celerybeat-schedule
 
 ##########################################
 # github prebuilt .gitignore here to EOF #
