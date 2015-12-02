@@ -6,7 +6,7 @@ from time import sleep
 
 from coyote.celery import app
 
-@app.task
+@app.task(name='echoprinthello')
 def cprint(string):
     print string
 

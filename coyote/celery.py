@@ -4,6 +4,7 @@ from __future__ import absolute_import
 import os
 import sys
 from datetime import timedelta
+from random import randrange
 
 from celery import Celery
 from celery.schedules import schedule
@@ -15,7 +16,13 @@ class OddsChecker(object):
 
 
     def should_i_run(self):
-        return True
+        print 'should i run?'
+        r = randrange(1,11)
+        print r
+        if r % 10 == 0:
+            return True
+        else:
+            return False
 
 
 class Scheduler(schedule):
@@ -54,7 +61,7 @@ app = Celery('tasks', include=build_includes())
 
 schedule = {
     'test': {
-        'task':'tasks.cstring',
+        'task':'echoprinthello',
         'schedule': Scheduler(timedelta(seconds=1), odds='100%'),
         'args': ('this is a test',),
     },
