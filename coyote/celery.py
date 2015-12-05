@@ -9,32 +9,26 @@ from random import randrange
 from celery import Celery
 from celery.schedules import schedule
 
-
-class OddsChecker(object):
-    def __init__(self, odds):
-        self.odds = odds
-
-
-    def should_i_run(self):
-        print 'should i run?'
-        r = randrange(1,11)
-        print r
-        if r % 10 == 0:
-            return True
-        else:
-            return False
+from .utils.conf_builder import AppConfig
 
 
 class Scheduler(schedule):
-    def __init__(self, run_every, odds, *args):
-        self.odds = OddsChecker(odds)
+    def __init__(self, run_every, odds, max_run_every=None, *args):
+        self.odds = odds
+        self.max_run_every = max_run_every
         super(Scheduler, self).__init__(run_every, *args)
 
 
     def is_due(self, last_run_at):
         due, next_time_to_check = super(Scheduler, self).is_due(last_run_at)
-        if due and self.odds.should_i_run():
-            return (True, next_time_to_check)
+        if due:
+            if self.max_run_every is not None:
+                next_time_to_check = timedelta(
+                    # TODO this will be broken until run_every.get_seconds() or
+                    # w/e
+                    seconds=randrange(run_every, self.max_run_every + 1))
+            if random() <= self.odds:
+                return (True, next_time_to_check)
         return (False, next_time_to_check)
 
 # LIB_DIRS = ['./coyote', './lib', '/var/lib/coyote']
@@ -66,6 +60,9 @@ schedule = {
         'args': ('this is a test',),
     },
 }
+
+config = AppConfig('./coyote_config.yaml')
+import ipdb;ipdb.set_trace()
 
 app.conf.update(CELERYBEAT_SCHEDULE=schedule)
 
