@@ -25,7 +25,7 @@ class TaskConfig(object):
 
     def _build_run(self, runs):
         if runs is None:
-            return None
+            return timedelta(seconds=30)
         if type(runs) == str:
             return self._calulate_timedelta(runs)
         if type(runs) == dict and runs.has_key('min') and runs.has_key('max'):
@@ -38,15 +38,17 @@ class TaskConfig(object):
 
 
     def _calculate_odds(self, odds):
+        if odds is None:
+            return float(1/2)
         if type(odds) == float:
             return odds
-        if '%' in odds or 'percent' in odds:
+        if '%' in odds or 'p' in odds:
             return float(int(odds.translate(None, letters + '%')) / 100)
-        match = search(r'(\d+)\s?(.*)\s?(\d+)', odds)
+        match = search(r'(\d+)\s?(\S*)\s?(\d+)', odds)
         if match is not None:
-            numerator = int(match.group(0))
-            denominator = int(match.group(2))
-            designator = match.group(1)
+            numerator = int(match.group(1))
+            denominator = int(match.group(3))
+            designator = match.group(2)
             if designator == ':' or designator.lower() == 'to':
                 denominator = numerator + denominator
             return float(numerator / denominator)
@@ -56,7 +58,7 @@ class TaskConfig(object):
 
     def _calculate_timedelta(self, time_string):
         time_string = str(time_string)
-        if 'd' in time_string:
+        if 'd' in time_string and 'c' not in time_string:
             key = 'days'
         elif 'h' in time_string:
             key = 'hours'

@@ -17,6 +17,7 @@ setup(
     license=LICENSE,
     description=DESCRIPTION,
     long_description=LONG_DESC,
+    test_suite='tests',
     # install_requires=[],
     # scripts=['bin/'],
     # classifiers=[],
