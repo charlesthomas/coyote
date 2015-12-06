@@ -4,7 +4,7 @@ from __future__ import absolute_import
 import os
 import sys
 from datetime import timedelta
-from random import randrange
+from random import random, randrange
 
 from celery import Celery
 from celery.schedules import schedule
@@ -62,7 +62,7 @@ schedule = {
 }
 
 config = AppConfig('./coyote_config.yaml')
-import ipdb;ipdb.set_trace()
+# import ipdb;ipdb.set_trace()
 
 app.conf.update(CELERYBEAT_SCHEDULE=schedule)
 

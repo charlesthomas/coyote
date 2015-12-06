@@ -17,7 +17,7 @@ class TestTaskConfig(TestCase):
         self.assertEqual(tc.raw_config, dict())
         self.assertFalse(tc.needs_sudo)
         self.assertEqual(tc.runs, timedelta(seconds=30))
-        self.assertEqual(tc.odds, float(1/2))
+        self.assertEqual(tc.odds, float(1)/2)
         self.assertFalse(hasattr(tc, 'args'))
 
 
@@ -70,32 +70,54 @@ class TestTaskConfig(TestCase):
 
     def _assert_odds(self, odds, want):
         tc = TaskConfig('_assert_odds', {'odds': odds})
-        self.assertEqual(tc.odds, float(want))
+        self.assertEqual(tc.odds, want)
 
 
     def test_odds(self):
-        self._assert_odds(None, 1/2)
-        self._assert_odds(float(1/3), 1/3)
-        self._assert_odds('1 / 4', 1/4)
-        self._assert_odds('1/4', 1/5)
-        self._assert_odds('1 in 4', 1/4)
-        self._assert_odds('1in5', 1/5)
-        self._assert_odds('1to6', 1/7)
-        self._assert_odds('1 to 6', 1/7)
-        self._assert_odds('1:7', 1/8)
-        self._assert_odds('1 : 7', 1/8)
-        self._assert_odds('8to1', 8/9)
-        self._assert_odds('8 to 1', 8/9)
-        self._assert_odds('9:1', 9/10)
-        self._assert_odds('9 : 1', 9/10)
-        self._assert_odds('10%', 1/10)
-        self._assert_odds('10 %', 1/10)
-        self._assert_odds('90 percent', 9/10)
-        self._assert_odds('110pct', 11/10)
+        self._assert_odds(None, float(2)/4)
+        self._assert_odds(float(1)/3, 1/float(3))
+        self._assert_odds('1 / 4', float(1)/4)
+        self._assert_odds('1/4', float(1)/4)
+        self._assert_odds('1 in 4', float(1)/4)
+        self._assert_odds('1in5', float(1)/5)
+        self._assert_odds('1to6', float(1)/7)
+        self._assert_odds('1 to 6', float(1)/7)
+        self._assert_odds('1:7', float(1)/8)
+        self._assert_odds('1 : 7', float(1)/8)
+        self._assert_odds('8to1', float(8)/9)
+        self._assert_odds('8 to 1', float(8)/9)
+        self._assert_odds('9:1', float(9)/10)
+        self._assert_odds('9 : 1', float(9)/10)
+        self._assert_odds('10%', float(1)/10)
+        self._assert_odds('10 %', float(1)/10)
+        self._assert_odds('90 percent', float(9)/10)
+        self._assert_odds('110pct', float(11)/10)
+
+
+    def _assert_runs(self, runs, want):
+        tc = TaskConfig('_assert_runs', {'runs': runs})
+        self.assertEqual(tc.runs, want)
 
 
     def test_build_runs(self):
-        pass
+        self._assert_runs(None, timedelta(seconds=30))
+        self._assert_runs(10, timedelta(seconds=10))
+        self._assert_runs('20', timedelta(seconds=20))
+        self._assert_runs({'min': 2, 'max': 5},
+                          (timedelta(seconds=2), timedelta(seconds=5)))
+        self._assert_runs({'min': '2h', 'max': '5d'},
+                          (timedelta(hours=2), timedelta(days=5)))
+        self._assert_runs({'max': '2h', 'min': '5d'},
+                          (timedelta(hours=2), timedelta(days=5)))
+        self._assert_runs({'min': '2h', 'max': '5d', 'ignore':'this'},
+                          (timedelta(hours=2), timedelta(days=5)))
+
+        kwargs = {'name': 'test', 'config': {'runs':{}}}
+        self.assertRaises(ConfigInitError, TaskConfig, **kwargs)
+        kwargs = {'name': 'test', 'config': {'runs':{'min':1}}}
+        self.assertRaises(ConfigInitError, TaskConfig, **kwargs)
+        kwargs = {'name': 'test', 'config': {'runs':{'max':2}}}
+        self.assertRaises(ConfigInitError, TaskConfig, **kwargs)
 
 
 if __name__ == '__main__':

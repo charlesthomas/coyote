@@ -26,11 +26,16 @@ class TaskConfig(object):
     def _build_run(self, runs):
         if runs is None:
             return timedelta(seconds=30)
+        if type(runs) == int:
+            return timedelta(seconds=runs)
         if type(runs) == str:
-            return self._calulate_timedelta(runs)
+            return self._calculate_timedelta(runs)
         if type(runs) == dict and runs.has_key('min') and runs.has_key('max'):
-            return (self._calculate_timedelta(runs['min']),
-                    self._calculate_timedelta(runs['max']))
+            minn = self._calculate_timedelta(runs['min'])
+            maxx = self._calculate_timedelta(runs['max'])
+            if minn > maxx:
+                return (maxx, minn)
+            return (minn, maxx)
         # TODO this should be fixed to account for AppConfig.halt_on_init_error
         raise ConfigInitError(
             'unable to figure out how often {name} should based on '
@@ -38,20 +43,21 @@ class TaskConfig(object):
 
 
     def _calculate_odds(self, odds):
+        # import ipdb;ipdb.set_trace()
         if odds is None:
-            return float(1/2)
+            return float(1)/2
         if type(odds) == float:
             return odds
         if '%' in odds or 'p' in odds:
-            return float(int(odds.translate(None, letters + '%')) / 100)
+            return float((odds.translate(None, letters + '%'))) / 100
         match = search(r'(\d+)\s?(\S*)\s?(\d+)', odds)
         if match is not None:
-            numerator = int(match.group(1))
-            denominator = int(match.group(3))
+            numerator = float(match.group(1))
+            denominator = float(match.group(3))
             designator = match.group(2)
             if designator == ':' or designator.lower() == 'to':
                 denominator = numerator + denominator
-            return float(numerator / denominator)
+            return numerator / denominator
         # TODO this should be fixed to account for AppConfig.halt_on_init_error
         raise ConfigInitError('unable to determine odds of', odds)
 
