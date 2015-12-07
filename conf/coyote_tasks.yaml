@@ -11,10 +11,9 @@ tasks:
             # timeout:
                 # min: 30s
                 # max: 10m
-    cprint:
+    echoprinthello:
         runs:
             min: 2
             max: 5
         odds: 25%
-        args:
-            string: [test1, test2, test3]
+        args: [[test1, test2, test3]]

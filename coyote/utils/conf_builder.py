@@ -16,11 +16,26 @@ class TaskConfig(object):
         self.name = name
         self.raw_config = config
         self.needs_sudo = config.get('needs_sudo', False)
+        # TODO account for AppConfig.halt_on_init_error
         self.runs = self._build_run(config.get('runs', None))
         self.odds = self._calculate_odds(config.get('odds', None))
         args = config.get('args', None)
         if args is not None:
+            if type(args) != list:
+                raise ConfigInitError("args must be a list!\n",args)
             self.args = args
+
+
+    @property
+    def schedule(self):
+        # TODO this should be fixed if/when we figure out custom scheduler
+        d = dict(task=self.name) #, schedule=self.runs)
+        if type(self.runs) == tuple:
+            self.runs = self.runs[0]
+        d.update(schedule=self.runs)
+        if hasattr(self, 'args'):
+            d.update(args=self.args)
+        return d
 
 
     def _build_run(self, runs):
@@ -36,14 +51,12 @@ class TaskConfig(object):
             if minn > maxx:
                 return (maxx, minn)
             return (minn, maxx)
-        # TODO this should be fixed to account for AppConfig.halt_on_init_error
         raise ConfigInitError(
             'unable to figure out how often {name} should based on '
             '{sched}'.format(name=self.name, sched=runs))
 
 
     def _calculate_odds(self, odds):
-        # import ipdb;ipdb.set_trace()
         if odds is None:
             return float(1)/2
         if type(odds) == float:
@@ -58,7 +71,6 @@ class TaskConfig(object):
             if designator == ':' or designator.lower() == 'to':
                 denominator = numerator + denominator
             return numerator / denominator
-        # TODO this should be fixed to account for AppConfig.halt_on_init_error
         raise ConfigInitError('unable to determine odds of', odds)
 
 
@@ -82,15 +94,40 @@ class ModConfig(object):
         try:
             with open(yamlpath) as f:
                 self.raw_config = safe_load(f)
-        # TODO this should be fixed to account for AppConfig.halt_on_init_error
         except Exception as err:
             raise ConfigInitError(err)
         self.import_path = self.raw_config.get('path', None)
         if self.import_path is None or not os.path.exists(self.import_path):
             raise ConfigInitError('path is missing for', yamlpath)
-        # TODO this should be fixed to account for AppConfig.halt_on_init_error
         self.tasks = [TaskConfig(key, val) for key, val in \
                       self.raw_config.get('tasks', dict()).items()]
+
+
+    @property
+    def schedules(self):
+        schedules = dict()
+        for task in self.tasks:
+            key = task.schedule['task']
+            schedules[key] = task.schedule
+        return schedules
+
+
+    @property
+    def syspath(self):
+        # TODO this def won't work on windows
+        # does that matter?
+        syspath = self.import_path.split('/')[:-2]
+        if len(syspath) == 0:
+            return None
+        if syspath[0] == '':
+            syspath[0] = '/'
+        syspath = os.path.join(*syspath)
+        return syspath
+
+
+    @property
+    def include(self):
+        return '{i}.tasks'.format(i=self.import_path.split('/')[-2])
 
 
 class AppConfig(object):
@@ -111,16 +148,45 @@ class AppConfig(object):
         self.celery_config = self.raw_config.get('celery_config', None)
         self.dry_run = self.raw_config.get('dry_run', False)
         self.halt_on_init_error = self.raw_config.get('halt_on_init_error', True)
+        # TODO this doesn't do anything yet
         self.include_default_tasks = self.raw_config.get('include_default_tasks', True)
-        self.modules = list()
+        self.modules = self._build_modules_list()
+
+
+    @property
+    def schedules(self):
+        schedules = dict()
+        for module in self.modules:
+            for key, val in module.schedules.items():
+                schedules[key]=val
+        return schedules
+
+
+    @property
+    def syspaths(self):
+        return list(set( # unique the list
+            [m.syspath for m in self.modules if m.syspath is not None]))
+
+
+    @property
+    def includes(self):
+        return list(set([m.include for m in self.modules]))
+
+
+    def _build_modules_list(self):
+        yamls = list()
+        mods = list()
         for config_dir in self.config_dirs:
             for root, dirs, files in walk(config_dir):
-                for f in files:
-                    if f.endswith('.yaml'):
-                        try:
-                            self.modules.append(ModConfig(os.path.join(root, f)))
-                        except ConfigInitError as err:
-                            if self.halt_on_init_error:
-                                raise
-                            else:
-                                print err
+                [yamls.append(os.path.join(root, f)) for f in files if
+                 f.endswith('.yaml')]
+        for yaml in yamls:
+            try:
+                mods.append(ModConfig(yaml))
+            except ConfigInitError as err:
+                if self.halt_on_init_error:
+                    raise
+                else:
+                    # TODO this should be a log
+                    print err
+        return mods
