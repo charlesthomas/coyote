@@ -1,3 +1,4 @@
+import logging
 import os.path
 from datetime import timedelta
 from os import walk
@@ -7,16 +8,29 @@ from string import letters
 
 from yaml import safe_load
 
+
 class ConfigInitError(Exception):
     pass
 
 
-class TaskConfig(object):
+class BaseConfig(object):
+    def _build_config_from_yaml(self, yamlpath):
+        yamlpath = os.path.abspath(yamlpath)
+        try:
+            with open(yamlpath) as f:
+                conf = safe_load(f)
+                if conf is None:
+                    return dict()
+                return conf
+        except Exception as err:
+            raise ConfigInitError(err)
+
+
+class TaskConfig(BaseConfig):
     def __init__(self, name, config=dict()):
         self.name = name
         self.raw_config = config
         self.needs_sudo = config.get('needs_sudo', False)
-        # TODO account for AppConfig.halt_on_init_error
         self.runs = self._build_run(config.get('runs', None))
         self.odds = self._calculate_odds(config.get('odds', None))
         args = config.get('args', None)
@@ -88,19 +102,19 @@ class TaskConfig(object):
         return timedelta(**kwargs)
 
 
-class ModConfig(object):
-    def __init__(self, yamlpath):
-        yamlpath = os.path.abspath(yamlpath)
-        try:
-            with open(yamlpath) as f:
-                self.raw_config = safe_load(f)
-        except Exception as err:
-            raise ConfigInitError(err)
+class ModConfig(BaseConfig):
+    def __init__(self, yamlpath, halt_on_init_error=True):
+        self.halt_on_init_error = halt_on_init_error
+        self.raw_config = self._build_config_from_yaml(yamlpath)
         self.import_path = self.raw_config.get('path', None)
         if self.import_path is None or not os.path.exists(self.import_path):
             raise ConfigInitError('path is missing for', yamlpath)
-        self.tasks = [TaskConfig(key, val) for key, val in \
-                      self.raw_config.get('tasks', dict()).items()]
+        self.tasks = self._build_tasks_list()
+
+
+    @property
+    def include(self):
+        return '{i}.tasks'.format(i=self.import_path.split('/')[-2])
 
 
     @property
@@ -114,9 +128,7 @@ class ModConfig(object):
 
     @property
     def syspath(self):
-        # TODO this def won't work on windows
-        # does that matter?
-        syspath = self.import_path.split('/')[:-2]
+        syspath = self.import_path.split(os.path.sep)[:-2]
         if len(syspath) == 0:
             return None
         if syspath[0] == '':
@@ -125,32 +137,59 @@ class ModConfig(object):
         return syspath
 
 
-    @property
-    def include(self):
-        return '{i}.tasks'.format(i=self.import_path.split('/')[-2])
+    def _build_tasks_list(self):
+        tasks = list()
+        for key, val in self.raw_config.get('tasks', dict()).items():
+            try:
+                tasks.append(TaskConfig(key, val))
+            except ConfigInitError as err:
+                if self.halt_on_init_error:
+                    raise err
+                else:
+                    logging.error(err)
+                    continue
+        return tasks
 
 
-class AppConfig(object):
+class AppConfig(BaseConfig):
     DEFAULT_CONFIG_DIRS = ['./conf', '/etc/coyote/conf.d']
     def __init__(self, yamlpath):
-        yamlpath = os.path.abspath(yamlpath)
-        try:
-            with open(yamlpath) as f:
-                self.raw_config = safe_load(f)
-        except Exception as err:
-            raise ConfigInitError(err)
-        if self.raw_config is None:
-            self.raw_config = dict()
-        self.has_sudo = self.raw_config.get('has_sudo', False)
-        self.config_dirs = self.raw_config.get(
-            'config_dirs', [d for d in self.DEFAULT_CONFIG_DIRS if
-                            os.path.exists(d)])
+        self.app_config_path = yamlpath
+        self.raw_config = self._build_config_from_yaml(yamlpath)
+
         self.celery_config = self.raw_config.get('celery_config', None)
         self.dry_run = self.raw_config.get('dry_run', False)
-        self.halt_on_init_error = self.raw_config.get('halt_on_init_error', True)
-        # TODO this doesn't do anything yet
         self.include_default_tasks = self.raw_config.get('include_default_tasks', True)
+        self.halt_on_init_error = self.raw_config.get('halt_on_init_error', True)
+        self.has_sudo = self.raw_config.get('has_sudo', False)
+
+        # these may require options set above
+        self.config_dirs = self._build_config_dirs()
         self.modules = self._build_modules_list()
+
+
+    def _build_config_dirs(self):
+        config_dirs = list()
+        if self.include_default_tasks:
+            config_dirs += [d for d in self.DEFAULT_CONFIG_DIRS if
+                            os.path.exists(d)]
+        for d in self.raw_config.get('config_dirs', list()):
+            if not os.path.exists(d):
+                err = ("{a} specifies scanning {d} for task configs but it "
+                      "doesn't exist".format(a=self.app_config_path, d=d))
+
+                if self.halt_on_init_error:
+                    raise ConfigInitError(err)
+                else:
+                    logging.error(err)
+                    continue
+            config_dirs.append(d)
+        return config_dirs
+
+
+    @property
+    def includes(self):
+        return list(set([m.include for m in self.modules]))
 
 
     @property
@@ -168,11 +207,6 @@ class AppConfig(object):
             [m.syspath for m in self.modules if m.syspath is not None]))
 
 
-    @property
-    def includes(self):
-        return list(set([m.include for m in self.modules]))
-
-
     def _build_modules_list(self):
         yamls = list()
         mods = list()
@@ -182,11 +216,10 @@ class AppConfig(object):
                  f.endswith('.yaml')]
         for yaml in yamls:
             try:
-                mods.append(ModConfig(yaml))
+                mods.append(ModConfig(yaml, self.halt_on_init_error))
             except ConfigInitError as err:
                 if self.halt_on_init_error:
                     raise
                 else:
-                    # TODO this should be a log
-                    print err
+                    logging.error(err)
         return mods

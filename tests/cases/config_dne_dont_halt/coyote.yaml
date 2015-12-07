@@ -1,0 +1,2 @@
+config_dirs: [/tmp/dne]
+halt_on_init_error: false

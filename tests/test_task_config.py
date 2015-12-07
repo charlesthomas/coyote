@@ -2,13 +2,7 @@
 from datetime import timedelta
 from unittest import main, TestCase
 
-from coyote.utils.conf_builder import (AppConfig, ConfigInitError,
-                                       ModConfig, TaskConfig)
-
-
-class TestHelloWorld(TestCase):
-    def test_hello_world(self):
-        self.assertTrue(True)
+from coyote.utils.conf_builder import ConfigInitError, TaskConfig
 
 
 class TestTaskConfig(TestCase):
@@ -92,6 +86,7 @@ class TestTaskConfig(TestCase):
         self._assert_odds('10 %', float(1)/10)
         self._assert_odds('90 percent', float(9)/10)
         self._assert_odds('110pct', float(11)/10)
+        # TODO add tests for bad odds
 
 
     def _assert_runs(self, runs, want):
@@ -117,6 +112,15 @@ class TestTaskConfig(TestCase):
         kwargs = {'name': 'test', 'config': {'runs':{'min':1}}}
         self.assertRaises(ConfigInitError, TaskConfig, **kwargs)
         kwargs = {'name': 'test', 'config': {'runs':{'max':2}}}
+        self.assertRaises(ConfigInitError, TaskConfig, **kwargs)
+
+
+    def test_bad_args_types(self):
+        kwargs = {'name': 'test', 'config': {'args': str()}}
+        self.assertRaises(ConfigInitError, TaskConfig, **kwargs)
+        kwargs = {'name': 'test', 'config': {'args': dict()}}
+        self.assertRaises(ConfigInitError, TaskConfig, **kwargs)
+        kwargs = {'name': 'test', 'config': {'args': set()}}
         self.assertRaises(ConfigInitError, TaskConfig, **kwargs)
 
 
