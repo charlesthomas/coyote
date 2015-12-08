@@ -1,5 +1,6 @@
 .vagrant
 celerybeat-schedule
+celerybeat.pid
 
 ##########################################
 # github prebuilt .gitignore here to EOF #
