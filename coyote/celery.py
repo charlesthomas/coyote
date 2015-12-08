@@ -1,9 +1,12 @@
 from __future__ import absolute_import
+from os import environ
 import sys
 from celery import Celery
 from .utils.conf_builder import AppConfig
 
-coyote = AppConfig('config.yaml')
+coyote_config = environ.get('COYOTECONFIG', 'coyote.yaml')
+
+coyote = AppConfig(coyote_config)
 sys.path += coyote.syspaths
 app = Celery(include=coyote.includes)
 

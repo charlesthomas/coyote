@@ -152,7 +152,7 @@ class ModConfig(BaseConfig):
 
 
 class AppConfig(BaseConfig):
-    DEFAULT_CONFIG_DIRS = ['./conf', '/etc/coyote/conf.d']
+    DEFAULT_CONFIG_DIRS = ['./task_configs', '/etc/coyote/conf.d']
     def __init__(self, yamlpath):
         self.app_config_path = yamlpath
         self.raw_config = self._build_config_from_yaml(yamlpath)
