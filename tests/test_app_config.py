@@ -11,7 +11,6 @@ class TestAppConfig(TestCase):
     def test_defaults(self):
         app = AppConfig('tests/cases/empty_app_config/coyote.yaml')
         self.assertEqual(app.raw_config, dict())
-        self.assertFalse(app.has_sudo)
         self.assertTrue(app.halt_on_init_error)
         self.assertFalse(app.dry_run)
         self.assertIsNone(app.celery_config)

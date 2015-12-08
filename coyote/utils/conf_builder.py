@@ -30,18 +30,18 @@ class TaskConfig(BaseConfig):
     def __init__(self, name, config=dict()):
         self.name = name
         self.raw_config = config
-        self.needs_sudo = config.get('needs_sudo', False)
         self.runs = self._build_run(config.get('runs', None))
         self.odds = self._calculate_odds(config.get('odds', None))
         args = config.get('args', None)
         if args is not None:
             if type(args) != list:
-                raise ConfigInitError("args must be a list!\n",args)
+                raise ConfigInitError("args must be a list!\n", args)
             self.args = args
+        # schedule requires args to be set first
+        self.schedule = self._build_schedule()
 
 
-    @property
-    def schedule(self):
+    def _build_schedule(self):
         # TODO this should be fixed if/when we figure out custom scheduler
         d = dict(task=self.name) #, schedule=self.runs)
         if type(self.runs) == tuple:
@@ -104,12 +104,11 @@ class TaskConfig(BaseConfig):
 
 class ModConfig(BaseConfig):
     def __init__(self, yamlpath, halt_on_init_error=True):
-        self.halt_on_init_error = halt_on_init_error
         self.raw_config = self._build_config_from_yaml(yamlpath)
         self.import_path = self.raw_config.get('path', None)
         if self.import_path is None or not os.path.exists(self.import_path):
             raise ConfigInitError('path is missing for', yamlpath)
-        self.tasks = self._build_tasks_list()
+        self.tasks = self._build_tasks_list(halt_on_init_error)
 
 
     @property
@@ -121,8 +120,9 @@ class ModConfig(BaseConfig):
     def schedules(self):
         schedules = dict()
         for task in self.tasks:
-            key = task.schedule['task']
-            schedules[key] = task.schedule
+            if task.schedule is not None:
+                key = task.schedule['task']
+                schedules[key] = task.schedule
         return schedules
 
 
@@ -137,13 +137,13 @@ class ModConfig(BaseConfig):
         return syspath
 
 
-    def _build_tasks_list(self):
+    def _build_tasks_list(self, halt_on_init_error):
         tasks = list()
         for key, val in self.raw_config.get('tasks', dict()).items():
             try:
                 tasks.append(TaskConfig(key, val))
             except ConfigInitError as err:
-                if self.halt_on_init_error:
+                if halt_on_init_error:
                     raise err
                 else:
                     logging.error(err)
@@ -161,7 +161,6 @@ class AppConfig(BaseConfig):
         self.dry_run = self.raw_config.get('dry_run', False)
         self.include_default_tasks = self.raw_config.get('include_default_tasks', True)
         self.halt_on_init_error = self.raw_config.get('halt_on_init_error', True)
-        self.has_sudo = self.raw_config.get('has_sudo', False)
 
         # these may require options set above
         self.config_dirs = self._build_config_dirs()

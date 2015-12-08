@@ -1,0 +1,13 @@
+path: coyote/tasks.py
+tasks:
+    coyote.tasks.down_iface:
+        runs:
+            min: 5 min
+            max: 10 min
+        odds: 2%
+        args: [eth0, 30]
+
+    echoprinthello:
+        runs: 30
+        odds: 25%
+        args: [heartbeat]
