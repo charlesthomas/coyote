@@ -41,6 +41,20 @@ class TaskConfig(BaseConfig):
         self.schedule = self._build_schedule()
 
 
+    def __repr__(self):
+        return "TaskConfig(name={n}, config={c})".format(n=self.name,
+                                                         c=self.raw_config)
+
+
+    def __str__(self):
+        s = "TaskConfig(name={n}, runs={r}, odds={o}, schedule={s}"
+        kwargs = dict(n=self.name, r=self.runs, o=self.odds, s=self.schedule)
+        if hasattr(self, 'args'):
+            s += ", args={a}"
+            kwargs.update(a=self.args)
+        return s.format(**kwargs)
+
+
     def _build_schedule(self):
         # TODO this should be fixed if/when we figure out custom scheduler
         d = dict(task=self.name) #, schedule=self.runs)
@@ -104,6 +118,8 @@ class TaskConfig(BaseConfig):
 
 class ModConfig(BaseConfig):
     def __init__(self, yamlpath, halt_on_init_error=True):
+        self.yamlpath = yamlpath
+        self.halt_on_init_error = halt_on_init_error
         self.raw_config = self._build_config_from_yaml(yamlpath)
         self.import_path = self.raw_config.get('path', None)
         if self.import_path is None or not os.path.exists(self.import_path):
@@ -111,8 +127,21 @@ class ModConfig(BaseConfig):
         self.tasks = self._build_tasks_list(halt_on_init_error)
 
 
+    def __repr__(self):
+        return "ModConfig(yamlpath={y}, halt_on_init_error={h})".format(
+            y=self.yamlpath, h=self.halt_on_init_error)
+
+
+    def __str__(self):
+        return ("ModConfig(import_path={imp}, include={inc}, schedules={sch}, "
+                "syspath={sysp}, tasks={tasks}".format(
+                    imp=self.import_path, inc=self.include, sch=self.schedules,
+                    sysp=self.syspath, tasks=[t.__str__() for t in self.tasks]))
+
+
     @property
     def include(self):
+        # TODO this won't work if the file isn't called tasks!
         return '{i}.tasks'.format(i=self.import_path.split('/')[-2])
 
 
@@ -165,6 +194,22 @@ class AppConfig(BaseConfig):
         # these may require options set above
         self.config_dirs = self._build_config_dirs()
         self.modules = self._build_modules_list()
+
+
+    def __repr__(self):
+        return "AppConfig(yaml_path={y})".format(y=self.app_config_path)
+
+
+    def __str__(self):
+        return ("AppConfig(app_config_path={a}, celery_config={cc}, "
+                "dry_run={dr}, include_default_tasks={idt}, "
+                "halt_on_init_error={h}, config_dirs={cd}, includes={inc}, "
+                "schedule{sch}, syspaths={sysp}, modules={m}".format(
+                    a=self.app_config_path, cc=self.celery_config,
+                    dr=self.dry_run, idt=self.include_default_tasks,
+                    h=self.halt_on_init_error, cd=self.config_dirs,
+                    inc=self.includes, sch=self.schedules, sysp=self.syspaths,
+                    m=[mod.__str__() for mod in self.modules]))
 
 
     def _build_config_dirs(self):

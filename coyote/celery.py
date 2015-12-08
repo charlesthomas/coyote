@@ -1,12 +1,15 @@
 from __future__ import absolute_import
-from os import environ
+import logging
 import sys
+from os import environ
+
 from celery import Celery
+
 from .utils.conf_builder import AppConfig
 
 coyote_config = environ.get('COYOTECONFIG', 'coyote.yaml')
-
 coyote = AppConfig(coyote_config)
+logging.info(coyote)
 sys.path += coyote.syspaths
 app = Celery(include=coyote.includes)
 
