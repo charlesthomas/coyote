@@ -8,6 +8,8 @@ from string import letters
 
 from yaml import safe_load
 
+from coyote.utils.scheduler import schedule
+
 
 class ConfigInitError(Exception):
     pass
@@ -60,7 +62,7 @@ class TaskConfig(BaseConfig):
         d = dict(task=self.name) #, schedule=self.runs)
         if type(self.runs) == tuple:
             self.runs = self.runs[0]
-        d.update(schedule=self.runs)
+        d.update(schedule=schedule(self.runs, odds=self.odds))
         if hasattr(self, 'args'):
             d.update(args=self.args)
         return d
