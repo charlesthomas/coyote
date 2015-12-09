@@ -44,8 +44,7 @@ class TaskConfig(BaseConfig):
 
 
     def __repr__(self):
-        return "TaskConfig(name={n}, config={c})".format(n=self.name,
-                                                         c=self.raw_config)
+        return self.__str__()
 
 
     def __str__(self):
@@ -130,8 +129,7 @@ class ModConfig(BaseConfig):
 
 
     def __repr__(self):
-        return "ModConfig(yamlpath={y}, halt_on_init_error={h})".format(
-            y=self.yamlpath, h=self.halt_on_init_error)
+        return self.__str__()
 
 
     def __str__(self):
@@ -199,7 +197,7 @@ class AppConfig(BaseConfig):
 
 
     def __repr__(self):
-        return "AppConfig(yaml_path={y})".format(y=self.app_config_path)
+        return self.__str__()
 
 
     def __str__(self):
