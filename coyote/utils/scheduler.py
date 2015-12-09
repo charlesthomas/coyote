@@ -4,10 +4,16 @@ from random import random, randrange
 from celery.schedules import schedule
 
 class Scheduler(schedule):
-    def __init__(self, run_every, odds, max_run_every=None, *args):
-        self.odds = odds
-        self.max_run_every = max_run_every
-        super(Scheduler, self).__init__(run_every, *args)
+    def __init__(self, run_every, *args, **kwargs):
+        super(Scheduler, self).__init__(run_every, *args, **kwargs)
+        self.odds = kwargs.get('odds', 1)
+        self.max_run_every = kwargs.get('max_run_every', None)
+
+
+    def __repr__(self):
+        superrepr = super(Scheduler, self).__repr__()[:-1]
+        return "{sr}, odds: {o}, max_run_every: {mre}>".format(
+            sr=superrepr, o=self.odds, mre=self.max_run_every)
 
 
     def is_due(self, last_run_at):
