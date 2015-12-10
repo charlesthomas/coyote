@@ -114,14 +114,5 @@ class TestTaskConfig(TestCase):
         self.assertRaises(ConfigInitError, TaskConfig, **kwargs)
 
 
-    def test_bad_args_types(self):
-        kwargs = {'name': 'test', 'config': {'args': str()}}
-        self.assertRaises(ConfigInitError, TaskConfig, **kwargs)
-        kwargs = {'name': 'test', 'config': {'args': dict()}}
-        self.assertRaises(ConfigInitError, TaskConfig, **kwargs)
-        kwargs = {'name': 'test', 'config': {'args': set()}}
-        self.assertRaises(ConfigInitError, TaskConfig, **kwargs)
-
-
 if __name__ == '__main__':
     main()
