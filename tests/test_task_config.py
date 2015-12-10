@@ -97,23 +97,14 @@ class TestTaskConfig(TestCase):
         self._assert_runs(None, timedelta(seconds=30))
         self._assert_runs(10, timedelta(seconds=10))
         self._assert_runs('20', timedelta(seconds=20))
-        # these are all broken until we can figure out how to correctly overload
-        # and pass params to schedules
-        # self._assert_runs({'min': 2, 'max': 5},
-                          # (timedelta(seconds=2), timedelta(seconds=5)))
-        # self._assert_runs({'min': '2h', 'max': '5d'},
-                          # (timedelta(hours=2), timedelta(days=5)))
-        # self._assert_runs({'max': '2h', 'min': '5d'},
-                          # (timedelta(hours=2), timedelta(days=5)))
-        # self._assert_runs({'min': '2h', 'max': '5d', 'ignore':'this'},
-                          # (timedelta(hours=2), timedelta(days=5)))
-
-        # these will go away when the above are re-enabled
-        self._assert_runs({'min': 2, 'max': 5}, timedelta(seconds=2))
-        self._assert_runs({'min': '2h', 'max': '5d'}, timedelta(hours=2))
-        self._assert_runs({'max': '2h', 'min': '5d'}, timedelta(hours=2))
+        self._assert_runs({'min': 2, 'max': 5},
+                          (timedelta(seconds=2), timedelta(seconds=5)))
+        self._assert_runs({'min': '2h', 'max': '5d'},
+                          (timedelta(hours=2), timedelta(days=5)))
+        self._assert_runs({'max': '2h', 'min': '5d'},
+                          (timedelta(hours=2), timedelta(days=5)))
         self._assert_runs({'min': '2h', 'max': '5d', 'ignore':'this'},
-                          timedelta(hours=2))
+                          (timedelta(hours=2), timedelta(days=5)))
 
         kwargs = {'name': 'test', 'config': {'runs':{}}}
         self.assertRaises(ConfigInitError, TaskConfig, **kwargs)

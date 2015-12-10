@@ -6,7 +6,6 @@ from os import environ
 from celery import Celery
 
 from .utils.conf_builder import AppConfig
-from .utils.scheduler import Scheduler
 
 coyote_config = environ.get('COYOTECONFIG', 'coyote.yaml')
 coyote = AppConfig(coyote_config)
@@ -18,5 +17,4 @@ app = Celery(include=coyote.includes)
 if coyote.celery_config is not None:
     app.config_from_object(coyote.celery_config)
 
-app.conf.update(CELERYBEAT_SCHEDULE=coyote.schedules,
-                CELERYBEAT_SCHEDULER=Scheduler)
+app.conf.update(CELERYBEAT_SCHEDULE=coyote.schedules)

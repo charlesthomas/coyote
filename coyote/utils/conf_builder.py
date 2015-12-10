@@ -57,14 +57,16 @@ class TaskConfig(BaseConfig):
 
 
     def _build_schedule(self):
-        # TODO this should be fixed if/when we figure out custom scheduler
-        d = dict(task=self.name) #, schedule=self.runs)
         if type(self.runs) == tuple:
-            self.runs = self.runs[0]
-        d.update(schedule=schedule(self.runs, odds=self.odds))
+            sched = dict(run_every=self.runs[0], max_run_every=self.runs[1])
+        else:
+            sched = dict(run_every=self.runs)
+        built_schedule = dict(task=self.name,
+                              schedule=schedule(odds=self.odds, **sched))
         if hasattr(self, 'args'):
-            d.update(args=self.args)
-        return d
+            built_schedule.update(args=self.args)
+        return built_schedule
+
 
 
     def _build_run(self, runs):
