@@ -26,10 +26,8 @@ class schedule(celeryschedule):
         due, next_time_to_check = super(schedule, self).is_due(last_run_at)
         if due:
             if self.max_run_every is not None:
-                next_time_to_check = timedelta(
-                    # TODO this will be broken until run_every.get_seconds() or
-                    # w/e
-                    seconds=randrange(self.run_every, self.max_run_every + 1))
+                next_time_to_check = randrange(
+                    self.run_every.seconds, self.max_run_every.seconds + 1)
             if random() <= self.odds:
                 return (True, next_time_to_check)
         return (False, next_time_to_check)
