@@ -11,6 +11,9 @@ from yaml import safe_load
 from coyote.utils.scheduler import schedule
 
 
+logger = logging.getLogger('coyote')
+
+
 class ConfigInitError(Exception):
     pass
 
@@ -36,8 +39,9 @@ class TaskConfig(BaseConfig):
         self.odds = self._calculate_odds(config.get('odds', None))
         args = config.get('args', None)
         if args is not None:
-            if type(args) != list:
-                raise ConfigInitError("args must be a list!\n", args)
+            # celery requires args to be a list or tuple
+            if type(args) != list and type(args) != tuple:
+                args = [args]
             self.args = args
         # schedule requires args to be set first
         self.schedule = self._build_schedule()
@@ -62,7 +66,8 @@ class TaskConfig(BaseConfig):
         else:
             sched = dict(run_every=self.runs)
         built_schedule = dict(task=self.name,
-                              schedule=schedule(odds=self.odds, **sched))
+                              schedule=schedule(name=self.name, odds=self.odds,
+                              **sched))
         if hasattr(self, 'args'):
             built_schedule.update(args=self.args)
         return built_schedule
@@ -143,8 +148,9 @@ class ModConfig(BaseConfig):
 
     @property
     def include(self):
-        # TODO this won't work if the file isn't called tasks!
-        return '{i}.tasks'.format(i=self.import_path.split('/')[-2])
+        a, b = self.import_path.split('/')[-2:]
+        b = b.replace('.py','')
+        return '{}.{}'.format(a, b)
 
 
     @property
@@ -177,8 +183,7 @@ class ModConfig(BaseConfig):
                 if halt_on_init_error:
                     raise err
                 else:
-                    logging.error(err)
-                    continue
+                    logger.error(err)
         return tasks
 
 
@@ -188,6 +193,8 @@ class AppConfig(BaseConfig):
         self.app_config_path = yamlpath
         self.raw_config = self._build_config_from_yaml(yamlpath)
 
+        self.log_level = self.raw_config.get('log_level', 'ERROR')
+        logger.setLevel(self.log_level.upper())
         self.celery_config = self.raw_config.get('celery_config', None)
         self.dry_run = self.raw_config.get('dry_run', False)
         self.include_default_tasks = self.raw_config.get('include_default_tasks', True)
@@ -227,7 +234,7 @@ class AppConfig(BaseConfig):
                 if self.halt_on_init_error:
                     raise ConfigInitError(err)
                 else:
-                    logging.error(err)
+                    logger.error(err)
                     continue
             config_dirs.append(d)
         return config_dirs
@@ -267,5 +274,5 @@ class AppConfig(BaseConfig):
                 if self.halt_on_init_error:
                     raise
                 else:
-                    logging.error(err)
+                    logger.error(err)
         return mods

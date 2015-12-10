@@ -1,4 +1,4 @@
-path: coyote/tasks.py
+path: coyote/default_tasks.py
 tasks:
     coyote.tasks.down_iface:
         runs:
@@ -9,5 +9,5 @@ tasks:
 
     echoprinthello:
         runs: 30
-        odds: 25%
-        args: [heartbeat]
+        odds: 100%
+        args: heartbeat
