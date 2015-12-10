@@ -11,7 +11,9 @@ from yaml import safe_load
 from coyote.utils.scheduler import schedule
 
 
-logger = logging.getLogger('coyote')
+# steal celery's log format, but change name for distinction in messages
+logging.basicConfig(format="[%(asctime)s: %(levelname)s/COYOTECONFIG] %(message)s")
+logger = logging.getLogger(__name__)
 
 
 class ConfigInitError(Exception):
@@ -45,6 +47,7 @@ class TaskConfig(BaseConfig):
             self.args = args
         # schedule requires args to be set first
         self.schedule = self._build_schedule()
+        logger.info('New Task: {}'.format(self))
 
 
     def __repr__(self):
@@ -52,8 +55,8 @@ class TaskConfig(BaseConfig):
 
 
     def __str__(self):
-        s = "TaskConfig(name={n}, runs={r}, odds={o}, schedule={s}"
-        kwargs = dict(n=self.name, r=self.runs, o=self.odds, s=self.schedule)
+        s = "TaskConfig(name={n}, runs={r}, odds={o}"
+        kwargs = dict(n=self.name, r=self.runs, o=self.odds)
         if hasattr(self, 'args'):
             s += ", args={a}"
             kwargs.update(a=self.args)
@@ -126,10 +129,14 @@ class TaskConfig(BaseConfig):
 
 class ModConfig(BaseConfig):
     def __init__(self, yamlpath, halt_on_init_error=True):
+        logger.info('Building ModConfig from {}'.format(yamlpath))
         self.yamlpath = yamlpath
         self.halt_on_init_error = halt_on_init_error
         self.raw_config = self._build_config_from_yaml(yamlpath)
         self.import_path = self.raw_config.get('path', None)
+        logger.debug('ModConfig import_path: {}'.format(self.import_path))
+        logger.debug('ModConfig include: {}'.format(self.include))
+        logger.debug('ModConfig syspath: {}'.format(self.syspath))
         if self.import_path is None or not os.path.exists(self.import_path):
             raise ConfigInitError('path is missing for', yamlpath)
         self.tasks = self._build_tasks_list(halt_on_init_error)
@@ -195,13 +202,23 @@ class AppConfig(BaseConfig):
 
         self.log_level = self.raw_config.get('log_level', 'ERROR')
         logger.setLevel(self.log_level.upper())
+        logger.info('Building AppConfig from {}'.format(yamlpath))
+        logger.debug('AppConfig log_level: {}'.format(self.log_level))
         self.celery_config = self.raw_config.get('celery_config', None)
+        logger.debug('AppConfig celery_config: {}'.format(self.celery_config))
         self.dry_run = self.raw_config.get('dry_run', False)
+        logger.debug('AppConfig dry_run: {}'.format(self.dry_run))
         self.include_default_tasks = self.raw_config.get('include_default_tasks', True)
+        logger.debug('AppConfig include_default_tasks: {}'.format(
+            self.include_default_tasks))
         self.halt_on_init_error = self.raw_config.get('halt_on_init_error', True)
+        logger.debug('AppConfig halt_on_init_error: {}'.format(
+            self.halt_on_init_error))
 
         # these may require options set above
         self.config_dirs = self._build_config_dirs()
+        logger.debug('AppConfig config_dirs: {}'.format(
+            ', '.join(self.config_dirs)))
         self.modules = self._build_modules_list()
 
 

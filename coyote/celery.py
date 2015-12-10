@@ -1,5 +1,4 @@
 from __future__ import absolute_import
-import logging
 import sys
 from os import environ
 
@@ -7,13 +6,9 @@ from celery import Celery
 
 from .utils.conf_builder import AppConfig
 
-# steal celery's log format, but change name for distinction in messages
-logging.basicConfig(format="[%(asctime)s: %(levelname)s/COYOTE] %(message)s")
-logger = logging.getLogger(__name__)
 
 coyote_config = environ.get('COYOTECONFIG', 'coyote.yaml')
 coyote = AppConfig(coyote_config)
-logger.info(coyote)
 sys.path += coyote.syspaths
 app = Celery(include=coyote.includes)
 # assume this shouldn't be trapped by coyote.halt_on_init_error = False
