@@ -1,6 +1,6 @@
 path: coyote/default_tasks.py
 tasks:
-    coyote.tasks.down_iface:
+    coyote.default_tasks.down_iface:
         runs:
             min: 5 min
             max: 10 min
