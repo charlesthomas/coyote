@@ -1,55 +1,63 @@
+from datetime import timedelta
 from logging import getLogger
 from random import random, randrange
 
+from celery.beat import PersistentScheduler
 from celery.schedules import schedule as celeryschedule
 
 logger = getLogger('celery.beat')
 
+
+class Scheduler(PersistentScheduler):
+    def maybe_due(self, entry, publisher=None):
+	if not hasattr(entry.schedule, 'odds'):
+	    return super(Scheduler, self).maybe_due(entry, publisher)
+
+	is_due, next_time_to_run = entry.is_due()
+	if is_due and random() <= entry.schedule.odds:
+	    logger.info('Scheduler: Sending due task %s (%s)', entry.name, entry.task)
+            try:
+                result = self.apply_async(entry, publisher=publisher)
+            except Exception as exc:
+                logger.error('Message Error: %s\n%s',
+                      exc, traceback.format_stack(), exc_info=True)
+            else:
+                logger.debug('%s sent. id->%s', entry.task, result.id)
+	elif is_due:
+	    logger.info("didn't fire: {}".format(entry.name))
+	    self.reserve(entry)
+	    entry.schedule.run_every = entry.schedule.randomize_run_every()
+        return next_time_to_run
+
+
 class schedule(celeryschedule):
-    def __init__(self, name, odds, run_every, max_run_every=None,
-                 relative=False, nowfun=None, app=None):
+    def __init__(self, name, odds, min_run_every, max_run_every=None,
+                 run_every=None, relative=False, nowfun=None, app=None):
         self.name = name
         self.odds = odds
-        self.max_run_every = max_run_every
-        super(schedule, self).__init__(run_every, relative, nowfun, app)
+	self.min_run_every = min_run_every
+	self.max_run_every = max_run_every
+	self.run_every = run_every or self.randomize_run_every()
+	self.relative = relative
+	self.nowfun = nowfun
+	self._app = app
 
 
     def __repr__(self):
-        return "schedule(name={}, odds={}, run_every={}, max_run_every={})".format(
-                   self.name, self.odds, self.run_every, self.max_run_every)
+        return ("schedule(name={}, odds={}, min_run_every={}, max_run_every={} "
+                "run_every={})".format(self.name, self.odds, self.min_run_every,
+                                       self.max_run_every, self.run_every))
 
 
     def __reduce__(self):
-        return self.__class__, (self.name, self.odds, self.run_every,
-                                self.max_run_every, self.relative, self.nowfun)
+        return self.__class__, (self.name, self.odds, self.min_run_every,
+				self.max_run_every, self.run_every,
+                                self.relative, self.nowfun)
 
 
-    def is_due(self, last_run_at):
-        due, next_time_to_check = super(schedule, self).is_due(last_run_at)
-        if due:
-            logger.info('{}: Due. Odds are {} or less to actually fire.'.format(
-                self.name, self.odds))
-            next_time_to_check = self._real_next_time_to_check()
-            rando = random()
-            logger.debug('{}: Got {} from random.'.format(self.name, rando))
-            if rando <= self.odds:
-                return (True, next_time_to_check)
-            else:
-                logger.debug('{}: Not this time.'.format(self.name))
-        return (False, next_time_to_check)
-
-
-    def _real_next_time_to_check(self):
+    def randomize_run_every(self):
         if self.max_run_every is None:
-            next_time_to_check = self.run_every.seconds
-        else:
-            logger.debug('{}: First we need to know when to run next.'.format(
-                self.name))
-            minn = self.run_every.seconds
-            maxx = self.max_run_every.seconds
-            logger.debug('{}: Between {} and {} seconds.'.format(
-                self.name, minn, maxx))
-            next_time_to_check = randrange(minn, maxx + 1)
-        logger.info('{}: Next check in {} seconds.'.format(
-            self.name, next_time_to_check))
-        return next_time_to_check
+            return self.min_run_every
+        run = randrange(self.min_run_every.seconds,
+                         self.max_run_every.seconds + 1)
+	return timedelta(seconds=run)

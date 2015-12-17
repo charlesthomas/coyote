@@ -65,9 +65,9 @@ class TaskConfig(BaseConfig):
 
     def _build_schedule(self):
         if type(self.runs) == tuple:
-            sched = dict(run_every=self.runs[0], max_run_every=self.runs[1])
+            sched = dict(min_run_every=self.runs[0], max_run_every=self.runs[1])
         else:
-            sched = dict(run_every=self.runs)
+            sched = dict(min_run_every=self.runs)
         built_schedule = dict(task=self.name,
                               schedule=schedule(name=self.name, odds=self.odds,
                               **sched))
