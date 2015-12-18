@@ -58,6 +58,6 @@ class schedule(celeryschedule):
     def randomize_run_every(self):
         if self.max_run_every is None:
             return self.min_run_every
-        run = randrange(self.min_run_every.seconds,
-                         self.max_run_every.seconds + 1)
+        run = randrange(self.min_run_every.total_seconds(),
+                         self.max_run_every.total_seconds() + 1)
 	return timedelta(seconds=run)
